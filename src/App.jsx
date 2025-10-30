@@ -31,25 +31,17 @@ function App() {
       method: "POST",
       body: JSON.stringify(payload),
     });
-
     response = await response.json();
-
     let dataString = response.candidates[0].content.parts[0].text;
     let dataArray = dataString.split("* ");
-
-    // Assign the new, trimmed array to a variable
     let trimmedData = dataArray.map((item) => item.trim());
-
     console.log("Response received:", result, trimmedData);
     setResult([...result, {type: "ques", text: question}, {type: "ans", text: trimmedData}]); // Set the new, trimmed array
   };
-
   const clearHistory = () => {
     localStorage.removeItem("history");
     setRecentHistory([]);
   };
-
-  // console.log("Rendering history:", recentHistory);
   return (
     <div className="grid grid-cols-4 h-screen text-center text-xl">
       <div className="col-span-1 bg-zinc-800 text-white">
