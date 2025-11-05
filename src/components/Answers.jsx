@@ -2,7 +2,7 @@
 
 import {useEffect, useState} from "react";
 import {checkHeading, replaceHeading} from "../helper";
-export function Answers({answers, index, totalResult}) {
+export default function Answers({answers, index, totalResult}) {
   const [heading, setHeading] = useState(false);
   const [answer, setAnswer] = useState(answers);
 

@@ -1,27 +1,26 @@
 import "./App.css";
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {URL} from "./constants";
-import {Answers} from "./components/Answers";
+import RecentSearch from "./components/RecentSearch";
+import Loader from "./components/Loader";
+import SearchPanel from "./components/SeachPanel";
+import Questions from "./components/Questions";
 
 function App() {
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState([]);
   const [selectedHistory, setSelectedHistory] = useState("");
   const [recentHistory, setRecentHistory] = useState(JSON.parse(localStorage.getItem("history")));
-  
+  const scrolltoAns = useRef();
+  const [loader, setLoader] = useState(false);
 
-  const keyPress = (event) => {
-    // console.log("Key pressed:", event.key);
-    if (event.key === "Enter") {
-      askQuestion();
-    }
-  };
+ 
 
   const askQuestion = async () => {
     if (!question && !selectedHistory) return;
     console.log("Question asked:", question);
 
-    if(question){
+    if (question) {
       if (localStorage.getItem("history")) {
         let oldHist = JSON.parse(localStorage.getItem("history"));
         oldHist = [question, ...oldHist];
@@ -33,15 +32,16 @@ function App() {
       }
     }
 
-    const payloadData = question? question : selectedHistory
-    console.log(payloadData)
+    const payloadData = question ? question : selectedHistory;
+    console.log(payloadData);
     const payload = {
-    contents: [
-      {
-        parts: [{text: payloadData}],
-      },
-    ],
-  };
+      contents: [
+        {
+          parts: [{text: payloadData}],
+        },
+      ],
+    };
+    setLoader(true);
     let response = await fetch(URL, {
       method: "POST",
       body: JSON.stringify(payload),
@@ -51,68 +51,48 @@ function App() {
     let dataArray = dataString.split("* ");
     let trimmedData = dataArray.map((item) => item.trim());
     console.log("Response received:", result, trimmedData);
-    setResult([...result, {type: "ques", text: question?question : selectedHistory}, {type: "ans", text: trimmedData}]); // Set the new, trimmed array
+    setResult([...result, {type: "ques", text: question ? question : selectedHistory}, {type: "ans", text: trimmedData}]); // Set the new, trimmed array
     setQuestion("");
+
+    setTimeout(() => {
+      scrolltoAns.current.scrollTop = scrolltoAns.current.scrollHeight;
+      setLoader(false);
+    }, 1000);
   };
 
-  const clearHistory = () => {
-    localStorage.removeItem("history");
-    setRecentHistory([]);
-  };
+  
 
-  useEffect(()=>{
+  useEffect(() => {
     console.log("Selected history changed: ", selectedHistory);
-    askQuestion()
-  }, [selectedHistory])
+    askQuestion();
+  }, [selectedHistory]);
+
+  const [darkMode, setDarkMode] = useState("dark");
+  useEffect(()=>{
+    console.log(darkMode)
+    if(darkMode==="dark"){
+      document.documentElement.classList.add("dark");
+    }
+    else{
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode])
 
   return (
     <div className="grid grid-cols-4 h-screen text-center text-xl overflow-hidden">
-      <div className="col-span-1 bg-zinc-800 text-white">
-        <div className="flex gap-2 m-3 justify-center">
-          <span className="font-bold">Recent History</span>
-          <button onClick={clearHistory} className="bg-[url(./assets/deleteSymbol.png)] size-[30px] cursor-pointer hover:brightness-50"></button>
-        </div>
-        <div>
-          <ul>
-            {recentHistory &&
-              recentHistory.map((historyItem, idx) => (
-                <li onClick={() => setSelectedHistory(historyItem)} key={idx + Math.random()} className="text-left truncate p-1 mx-1 cursor-pointer hover:bg-zinc-700 ">
-                  {historyItem}
-                </li>
-              ))}
-          </ul>
-        </div>
-      </div>
-      <div className="col-span-3 bg-zinc-900">
-        <div className="container h-150 m-2 overflow-scroll text-white">
-          <div>Hello useer! </div>
+      <select className="fixed dark:text-white p-5 bottom-0 outline-none" onChange={(event) =>setDarkMode(event.target.value)}>
+        <option value="dark">Dark Mode</option>
+        <option value="light">Light Mode</option>
+      </select>
+      <RecentSearch recentHistory = {recentHistory} setRecentHistory={setRecentHistory} setSelectedHistory = {setSelectedHistory}/>
+      <div className="col-span-3 dark:bg-zinc-900 bg-amber-50 flex flex-col">
+        <Loader loader={loader} />
+        <div ref={scrolltoAns} className="container h-110 m-2 overflow-scroll align-middle text-white">
           <div>
-            <ul>
-              {result &&
-                result.map((res, idx) => (
-                  <div key={idx + Math.random} className={res.type === "ques" ? "flex justify-end m-4" : "m-4"}>
-                    {res.type === "ques" ? (
-                      <li className="text-right bg-zinc-400 px-2 py-1 rounded-tl-2xl rounded-b-2xl w-fit font-bold" key={idx + Math.random()}>
-                        <Answers answers={res.text} index={idx} totalResult={result.length} />
-                      </li>
-                    ) : (
-                      res.text.map((ansText, ansidx) => (
-                        <li className="text-left px-2 py-1 bg-zinc-500 my-3 rounded-tr-2xl rounded-b-2xl w-fit font-bold" key={ansidx + Math.random()}>
-                          <Answers answers={ansText} index={ansidx} totalResult={result.length} />
-                        </li>
-                      ))
-                    )}
-                  </div>
-                ))}
-            </ul>
+            <Questions result={result} />
           </div>
         </div>
-        <div className="bg-zinc-800 w-1/2 text-white m-auto rounded-4xl border-zinc-600 border-2 flex p-2 h-16">
-          <input type="text" value={question} onChange={(event) => setQuestion(event.target.value)} onKeyUp={keyPress} className="w-full h-full p-3 outline-none" placeholder="Ask me anything..." />
-          <button className="pr-2" onClick={() => askQuestion()}>
-            Ask
-          </button>
-        </div>
+        <SearchPanel question={question} setQuestion={setQuestion} askQuestion={askQuestion} />
       </div>
     </div>
   );
